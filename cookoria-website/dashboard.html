@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة التحكم - Cookoria</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .dashboard-container { max-width: 1000px; margin: 50px auto; text-align: center; padding: 0 20px; }
+    .stats { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; margin-bottom: 40px; }
+    .stat-card { background: white; padding: 30px; border-radius: 20px; min-width: 150px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+    .stat-card h3 { font-size: 36px; color: #d97706; }
+    .premium-btn { background: linear-gradient(135deg, #d97706, #b45309); color: white; border: none; padding: 15px 40px; border-radius: 50px; font-size: 18px; cursor: pointer; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <header><h1>🍳 Cookoria</h1><nav><a href="index.html">الرئيسية</a><a href="recipes.html">الوصفات</a><a href="#" id="logoutBtn">تسجيل خروج</a></nav></header>
+  <div class="dashboard-container"><h2>👋 مرحباً بك في Cookoria</h2>
+    <div class="stats"><div class="stat-card"><h3>✅ 5</h3><p>وصفات طبختها</p></div><div class="stat-card"><h3>⭐ 4.8</h3><p>تقييمك</p></div><div class="stat-card"><h3>⏱️ 2 ساعة</h3><p>وقت الطبخ</p></div></div>
+    <button class="premium-btn" onclick="window.location.href='payment.html'">🚀 رقية للبريميوم</button>
+  </div>
+  <script type="module">
+    import { auth } from './js/firebase-config.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    onAuthStateChanged(auth, (user) => { if(!user) window.location.href='login.html'; });
+    document.getElementById('logoutBtn')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const { signOut } = await import('./js/firebase-config.js');
+      await signOut(auth);
+      window.location.href = 'index.html';
+    });
+  </script>
+</body>
+</html>

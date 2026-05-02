@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>دخول - Cookoria</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header>
+    <h1 data-i18n="appName">🍳 Cookoria</h1>
+    <nav>
+      <a href="index.html" data-i18n="home">الرئيسية</a>
+      <a href="recipes.html" data-i18n="recipes">الوصفات</a>
+      <a href="login.html" data-i18n="login">دخول</a>
+      <a href="signup.html" data-i18n="signup">اشتراك</a>
+      <button class="lang-switch" onclick="switchLanguage('ar')">🇸🇦 عربي</button>
+      <button class="lang-switch" onclick="switchLanguage('en')">🇬🇧 English</button>
+    </nav>
+  </header>
+
+  <div class="auth-container">
+    <h2 data-i18n="loginTitle">🔐 تسجيل الدخول</h2>
+    <form id="loginForm">
+      <input type="email" id="email" data-i18n-placeholder="email" placeholder="البريد الإلكتروني" required>
+      <input type="password" id="password" data-i18n-placeholder="password" placeholder="كلمة المرور" required>
+      <button type="submit" data-i18n="loginBtn">دخول</button>
+    </form>
+    <p><span data-i18n="noAccount">ليس لديك حساب؟</span> <a href="signup.html" data-i18n="createAccount">أنشئ حساب جديد</a></p>
+    <div id="errorMsg" class="error"></div>
+  </div>
+
+  <script type="module" src="js/auth.js"></script>
+</body>
+</html>

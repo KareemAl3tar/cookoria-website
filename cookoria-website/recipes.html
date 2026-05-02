@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الوصفات - Cookoria</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .premium-locked { position: relative; transition: 0.3s; }
+    .lock-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); border-radius: 20px;
+      display: flex; flex-direction: column; justify-content: center;
+      align-items: center; color: white; z-index: 10; backdrop-filter: blur(3px);
+    }
+    .lock-overlay span { font-size: 48px; margin-bottom: 10px; }
+    .lock-overlay p { background: #d97706; padding: 8px 16px; border-radius: 30px; font-size: 14px; }
+    .premium-badge { background: linear-gradient(135deg, #d97706, #b45309); color: white; padding: 5px 12px; border-radius: 30px; font-size: 12px; display: inline-block; margin-bottom: 10px; }
+    .free-badge { background: #38a169; }
+    .user-status { text-align: center; padding: 10px; margin: 20px auto; max-width: 500px; border-radius: 30px; font-weight: bold; }
+    .premium-status { background: #c6f6d5; color: #22543d; }
+    .free-status { background: #fed7d7; color: #742a2a; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1 data-i18n="appName">🍳 Cookoria</h1>
+    <nav>
+      <a href="index.html" data-i18n="home">الرئيسية</a>
+      <a href="recipes.html" data-i18n="recipes">الوصفات</a>
+      <a href="login.html" data-i18n="login">دخول</a>
+      <a href="signup.html" data-i18n="signup">اشتراك</a>
+      <button class="lang-switch" onclick="switchLanguage('ar')">🇸🇦 عربي</button>
+      <button class="lang-switch" onclick="switchLanguage('en')">🇬🇧 English</button>
+    </nav>
+  </header>
+
+  <div id="userStatus" class="user-status"></div>
+
+  <div class="recipes-container">
+    <h2 data-i18n="ourRecipes">📖 وصفاتنا</h2>
+    <div class="recipes-grid" id="recipesGrid">
+      
+      <div class="recipe-card" id="recipe1">
+        <img src="assets\images.jpg" alt="Koshari">
+        <span class="premium-badge free-badge">🎁 مجانية</span>
+        <h3 data-i18n="koshari">كشرى مصري</h3>
+        <p data-i18n="koshariDesc">وصفة الكشرى الأصلية بالخلطة السرية</p>
+        <button onclick="window.location.href='recipe-step.html?id=1'">اطبخ دلوقتي</button>
+      </div>
+
+      <div class="recipe-card premium-locked" id="recipe2" data-premium="true">
+        <img src="assets\Stuffed-Grape-Leaves.jpg" alt="Mahshi">
+        <span class="premium-badge">⭐ بريميوم</span>
+        <h3 data-i18n="mahshi">محشى ورق عنب</h3>
+        <p data-i18n="mahshiDesc">طريقة عمل المحشى بالخطوات</p>
+        <button>اطبخ دلوقتي</button>
+      </div>
+
+      <div class="recipe-card premium-locked" id="recipe3" data-premium="true">
+        <img src="assets\el menoufy-c9c7df14-585e-402e-b7b4-9f8ad920183b.jpg" alt="Fatta">
+        <span class="premium-badge">⭐ بريميوم</span>
+        <h3 data-i18n="fatta">فتة بالخلطة</h3>
+        <p data-i18n="fattaDesc">فتة الأضحية بالطريقة المصرية</p>
+        <button>اطبخ دلوقتي</button>
+      </div>
+
+      <div class="recipe-card premium-locked" id="recipe4" data-premium="true">
+        <img src="assets\62624-طاجن-الملوخية.webp" alt="Molokhia">
+        <span class="premium-badge">⭐ بريميوم</span>
+        <h3>ملوخية بالقوانص</h3>
+        <p>الملوخية المصرية بالطريقة الأصلية</p>
+        <button>اطبخ دلوقتي</button>
+      </div>
+
+      <div class="recipe-card premium-locked" id="recipe5" data-premium="true">
+        <img src="assets\كباب حلة.jpg" alt="Kabab">
+        <span class="premium-badge">⭐ بريميوم</span>
+        <h3>كباب حلة</h3>
+        <p>كباب اللحم بالصلصة على الطريقة المصرية</p>
+        <button>اطبخ دلوقتي</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module">
+    import { initLanguage, setLanguage, t } from './js/translations.js';
+    import { auth } from './js/firebase-config.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { db } from './js/firebase-config.js';
+
+    initLanguage();
+    window.switchLanguage = (lang) => { setLanguage(lang); location.reload(); };
+
+    let currentUser = null;
+    let isPremium = false;
+
+    function updateUserStatus() {
+      const statusDiv = document.getElementById('userStatus');
+      if (!currentUser) {
+        statusDiv.innerHTML = `🔓 مرحباً زائر - <a href="login.html" style="color:#d97706;">سجل دخول</a> للوصول للوصفات المميزة`;
+        statusDiv.className = 'user-status free-status';
+      } else if (isPremium) {
+        statusDiv.innerHTML = `👑 مرحباً ${currentUser.email} | أنت مشترك مميز! 🎉 <a href="payment.html" style="color:#d97706;">تجديد الاشتراك</a> | <a href="#" id="logoutBtnStatus" style="color:#e53e3e;">تسجيل خروج</a>`;
+        statusDiv.className = 'user-status premium-status';
+        document.getElementById('logoutBtnStatus')?.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const { signOut } = await import('./js/firebase-config.js');
+          await signOut(auth);
+          alert('👋 تم تسجيل الخروج');
+          window.location.href = 'index.html';
+        });
+      } else {
+        statusDiv.innerHTML = `⭐ مرحباً ${currentUser.email} | حساب عادي - <a href="payment.html" style="color:#d97706; font-weight:bold;">🚀 رقية للبريميوم</a> | <a href="#" id="logoutBtnStatus" style="color:#e53e3e;">تسجيل خروج</a>`;
+        statusDiv.className = 'user-status free-status';
+        document.getElementById('logoutBtnStatus')?.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const { signOut } = await import('./js/firebase-config.js');
+          await signOut(auth);
+          alert('👋 تم تسجيل الخروج');
+          window.location.href = 'index.html';
+        });
+      }
+    }
+
+    function lockPremiumRecipes() {
+      document.querySelectorAll('.premium-locked').forEach(card => {
+        const existingOverlay = card.querySelector('.lock-overlay');
+        if (existingOverlay) existingOverlay.remove();
+        const btn = card.querySelector('button');
+        if (!currentUser || !isPremium) {
+          const overlay = document.createElement('div');
+          overlay.className = 'lock-overlay';
+          overlay.innerHTML = `<span>🔒</span><p>${!currentUser ? 'سجل دخول أولاً' : 'اشترك في الباقة المميزة'}</p>`;
+          card.appendChild(overlay);
+          if (btn) {
+            btn.disabled = true;
+            btn.onclick = () => !currentUser ? window.location.href = 'login.html' : window.location.href = 'payment.html';
+          }
+        } else {
+          if (btn) {
+            btn.disabled = false;
+            const idMap = { recipe2: 2, recipe3: 3, recipe4: 4, recipe5: 5 };
+            btn.onclick = () => window.location.href = `recipe-step.html?id=${idMap[card.id] || 2}`;
+          }
+        }
+      });
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      currentUser = user;
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        isPremium = userSnap.exists() && userSnap.data().isPremium === true;
+      } else { isPremium = false; }
+      updateUserStatus();
+      lockPremiumRecipes();
+    });
+  </script>
+</body>
+</html>

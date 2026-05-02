@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>طبخ الوصفة - Cookoria</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .recipe-step-container { max-width: 800px; margin: 40px auto; padding: 30px; background: white; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; }
+    .recipe-image { width: 100%; max-height: 350px; object-fit: cover; border-radius: 20px; margin-bottom: 20px; }
+    .step-counter { color: #d97706; font-size: 18px; margin-bottom: 15px; }
+    .step-title { font-size: 28px; color: #331a0e; margin-bottom: 20px; }
+    .step-description { font-size: 20px; line-height: 1.8; color: #4a2a1a; margin-bottom: 30px; padding: 20px; background: #fef7e8; border-radius: 20px; }
+    .timer-display { background: #331a0e; color: white; padding: 15px; border-radius: 60px; font-size: 24px; font-weight: bold; margin-bottom: 30px; display: inline-block; min-width: 150px; }
+    .step-buttons { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 30px; }
+    .step-buttons button { padding: 12px 30px; font-size: 18px; border: none; border-radius: 40px; cursor: pointer; transition: 0.3s; }
+    .btn-next { background: #d97706; color: white; }
+    .btn-next:hover { background: #b45309; }
+    .btn-prev { background: #ccc; color: #333; }
+    .btn-pause { background: #2c5282; color: white; }
+    .progress-bar { width: 100%; background: #e2e8f0; border-radius: 20px; height: 12px; margin-top: 30px; }
+    .progress-fill { background: #d97706; height: 12px; border-radius: 20px; width: 0%; transition: width 0.3s; }
+    .resume-message { background: #e9f5e9; padding: 15px; border-radius: 15px; margin-bottom: 20px; color: #2e7d32; }
+  </style>
+</head>
+<body>
+  <header><h1>🍳 Cookoria</h1><nav><a href="index.html">الرئيسية</a><a href="recipes.html">الوصفات</a><a href="#" id="logoutBtn">تسجيل خروج</a></nav></header>
+  <div class="recipe-step-container" id="recipeContainer"></div>
+  <script type="module">
+    import { auth } from './js/firebase-config.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { db } from './js/firebase-config.js';
+    
+    const recipes = {
+      1: { name: "كشرى مصري", nameEn: "Egyptian Koshari", image: "https://cdn.pixabay.com/photo/2019/05/27/19/51/koshari-4232999_640.jpg", steps: ["نقطع البصل ناعم ونحمره", "نسلق الأرز والعدس والمكرونة", "نخلط المكونات مع بعض", "نضيف الصلصة الحمراء", "نزين بالبصل المحمر"], timers: [0,0,0,0,0] },
+      2: { name: "محشى ورق عنب", nameEn: "Stuffed Grape Leaves", image: "https://cdn.pixabay.com/photo/2018/01/11/10/23/dolma-3075665_640.jpg", steps: ["ننقع ورق العنب", "نحضر حشوة الأرز", "نلف ورق العنب", "نرص الرولات في القدر", "نطهو 45 دقيقة"], timers: [600,0,0,0,2700] },
+      3: { name: "فتة بالخلطة", nameEn: "Egyptian Fatta", image: "https://cdn.pixabay.com/photo/2020/12/13/17/37/fatta-5829450_640.jpg", steps: ["نحمص الخبز", "نطبخ الأرز", "نحضر صلصة الطماطم", "نرتب الطبقات", "نقدم ساخنة"], timers: [0,0,0,0,0] },
+      4: { name: "ملوخية بالقوانص", nameEn: "Molokhia", image: "https://cdn.pixabay.com/photo/2016/12/31/21/22/molokhia-2141580_640.jpg", steps: ["نغسل الملوخية", "نشوح الثوم", "نضيف المرق", "نضيف الملوخية", "نضيف القوانص"], timers: [0,0,0,0,0] },
+      5: { name: "كباب حلة", nameEn: "Kabab", image: "https://cdn.pixabay.com/photo/2019/11/05/13/15/kebab-4603654_640.jpg", steps: ["نقطع اللحم مكعبات", "نشوح البصل", "نضيف اللحم", "نضيف الصلصة", "نترك على نار هادئة"], timers: [0,0,0,0,0] }
+    };
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const recipeId = urlParams.get('id');
+    const recipe = recipes[recipeId];
+    const STORAGE_KEY = `cookoria_progress_${recipeId}`;
+    let currentStep = 0;
+    
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      if (recipeId > 1) {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists() || !userSnap.data().isPremium) {
+          alert('هذه الوصفة للمشتركين المميزين فقط');
+          window.location.href = 'payment.html';
+          return;
+        }
+      }
+      loadAndRender();
+    });
+    
+    function loadAndRender() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) { currentStep = JSON.parse(saved).currentStep; showResumeMessage(); }
+      else { renderStep(); }
+    }
+    
+    function showResumeMessage() {
+      const container = document.getElementById('recipeContainer');
+      const msg = document.createElement('div'); msg.className = 'resume-message';
+      msg.innerHTML = `⏸️ لديك وصفة قيد التقدم (خطوة ${currentStep+1}) <button onclick="resumeCooking()">استئناف</button> <button onclick="resetProgress()">بدء جديد</button>`;
+      container.insertBefore(msg, container.firstChild);
+    }
+    window.resumeCooking = function() { document.querySelector('.resume-message')?.remove(); renderStep(); };
+    window.resetProgress = function() { localStorage.removeItem(STORAGE_KEY); currentStep = 0; document.querySelector('.resume-message')?.remove(); renderStep(); };
+    function saveProgress() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ currentStep, recipeId, timestamp: Date.now() })); }
+    
+    let timerInterval = null;
+    function startTimer(seconds) {
+      if (timerInterval) clearInterval(timerInterval);
+      if (seconds === 0) return;
+      let timeLeft = seconds;
+      const timerDisplay = document.getElementById('timerDisplay');
+      timerDisplay.style.display = 'inline-block';
+      const update = () => { let mins = Math.floor(timeLeft/60), secs = timeLeft%60; timerDisplay.textContent = `⏱️ ${mins}:${secs.toString().padStart(2,'0')}`; };
+      update();
+      timerInterval = setInterval(() => {
+        if (timeLeft <= 1) { clearInterval(timerInterval); timerDisplay.textContent = '✅ انتهى الوقت!'; setTimeout(() => timerDisplay.style.display = 'none', 3000); }
+        else { timeLeft--; update(); }
+      }, 1000);
+    }
+    
+    function renderStep() {
+      if (!recipe) { document.getElementById('recipeContainer').innerHTML = '<h2>الوصفة غير موجودة</h2><a href="recipes.html">العودة</a>'; return; }
+      const isArabic = document.documentElement.lang === 'ar';
+      const html = `<img src="${recipe.image}" class="recipe-image"><div class="step-counter">الخطوة ${currentStep+1} من ${recipe.steps.length}</div>
+        <h2 class="step-title">${isArabic ? recipe.name : recipe.nameEn}</h2><div class="step-description">${recipe.steps[currentStep]}</div>
+        <div id="timerDisplay" class="timer-display" style="display:none"></div><div class="step-buttons">
+        <button class="btn-prev" id="prevBtn" ${currentStep===0 ? 'disabled' : ''}>🔙 السابق</button>
+        <button class="btn-pause" id="pauseBtn">⏸️ إيقاف مؤقت</button>
+        <button id="nextBtn" class="btn-next">${currentStep===recipe.steps.length-1 ? '🎉 إنهاء' : 'التالي 🔜'}</button></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${((currentStep+1)/recipe.steps.length)*100}%"></div></div>`;
+      document.getElementById('recipeContainer').innerHTML = html;
+      if (recipe.timers?.[currentStep]) startTimer(recipe.timers[currentStep]);
+      document.getElementById('prevBtn')?.addEventListener('click', () => { if(currentStep>0){ currentStep--; saveProgress(); renderStep(); } });
+      document.getElementById('nextBtn')?.addEventListener('click', () => {
+        if(currentStep < recipe.steps.length-1){ currentStep++; saveProgress(); renderStep(); }
+        else { localStorage.removeItem(STORAGE_KEY); alert('🎉 ألف مبروك! الوصفة اكتملت'); window.location.href='recipes.html'; }
+      });
+      document.getElementById('pauseBtn')?.addEventListener('click', () => { saveProgress(); alert('⏸️ تم الإيقاف مؤقتًا'); window.location.href='recipes.html'; });
+    }
+    
+    document.getElementById('logoutBtn')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const { signOut } = await import('./js/firebase-config.js');
+      await signOut(auth);
+      window.location.href = 'index.html';
+    });
+  </script>
+</body>
+</html>
